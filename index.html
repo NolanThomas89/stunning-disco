@@ -1,326 +1,61 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --basalt-dark: #0a0a0b;
-            --basalt-light: #1e1e20;
-            --basalt-edge: #2d2d30;
-            --accent-silver: #a1a1a6;
-            --text-primary: #f5f5f7;
-            --text-secondary: #86868b;
-            --glint: rgba(255, 255, 255, 0.05);
-            --accent-active: #ffffff;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-
-        body {
-            background-color: #050505;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
-            font-family: 'Inter', sans-serif;
-            color: var(--text-primary);
-        }
-
-        #bg-canvas {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: -1;
-            pointer-events: none;
-        }
-
-        /* --- EFFETS METEO --- */
-        .sun-glow {
-            position: absolute;
-            top: 50%; left: 50%; width: 80vw; height: 80vw;
-            background: radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%);
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            opacity: 0; transition: opacity 2s ease;
-        }
-        .thunder-layer {
-            position: fixed; inset: 0; background: white; opacity: 0; pointer-events: none; z-index: 0;
-        }
-        @keyframes flash { 0%, 95%, 100% { opacity: 0; } 96% { opacity: 0.15; } 98% { opacity: 0.05; } }
-        .weather-storm .thunder-layer { animation: flash 4s infinite; }
-        .weather-sun .sun-glow { opacity: 1; }
-
-        /* Overlay de grain */
-        .noise-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; opacity: 0.04; z-index: 10;
-        }
-
-        /* --- CARTE PRINCIPALE --- */
-        .weather-card {
-            position: relative;
-            width: 420px;
-            background: linear-gradient(135deg, var(--basalt-light) 0%, var(--basalt-dark) 100%);
-            border: 1px solid var(--basalt-edge);
-            padding: 48px;
-            box-shadow: 0 40px 100px rgba(0,0,0,0.8);
-            backdrop-filter: blur(10px);
-            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
-            overflow: hidden;
-            z-index: 5;
-        }
-
-        /* Effet de brillance au survol */
-        .glint-effect {
-            position: absolute;
-            top: 0; left: -150%; width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, var(--glint), transparent);
-            transform: skewX(-25deg);
-            transition: 0.75s;
-            pointer-events: none;
-        }
-        .weather-card:hover .glint-effect { left: 150%; }
-        .weather-card:hover { transform: translateY(-5px); border-color: #3d3d42; }
-
-        .location-meta { font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.3em; color: var(--text-secondary); margin-bottom: 50px; display: flex; justify-content: space-between; }
-        
-        /* Température avec unité en haut */
-        .temperature { 
-            display: flex;
-            align-items: flex-start;
-            font-size: 110px; 
-            font-weight: 800; 
-            line-height: 0.85; 
-            letter-spacing: -0.05em; 
-            background: linear-gradient(to bottom, #fff 40%, #666 100%); 
-            -webkit-background-clip: text; 
-            -webkit-text-fill-color: transparent; 
-        }
-        .unit { 
-            font-family: 'Inter', sans-serif; 
-            font-weight: 300; 
-            font-size: 32px; 
-            margin-top: 8px; /* Positionne le ° en haut */
-            -webkit-text-fill-color: var(--text-primary); 
-        }
-
-        .condition-label { font-family: 'Space Mono', monospace; font-size: 14px; color: var(--accent-silver); margin-top: 16px; letter-spacing: 0.1em; }
-
-        /* Stats Grid */
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; border-top: 1px solid var(--basalt-edge); padding: 32px 0; margin-top: 32px; }
-        .stat-item { display: flex; flex-direction: column; gap: 4px; }
-        .stat-label { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.1em; }
-        .stat-value { font-size: 18px; }
-
-        .forecast-container { border-top: 1px solid var(--basalt-edge); padding-top: 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
-        .forecast-day { text-align: center; }
-        .forecast-date { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--text-secondary); display: block; margin-bottom: 4px; }
-        .forecast-temp { font-size: 16px; font-weight: 700; }
-
-        /* --- PANNEAU ADMIN SECRET --- */
-        #admin-panel {
-            position: fixed; right: -300px; top: 0; width: 280px; height: 100%;
-            background: var(--basalt-dark); border-left: 1px solid var(--basalt-edge);
-            padding: 30px; z-index: 100; transition: right 0.5s cubic-bezier(0.23, 1, 0.32, 1);
-            font-family: 'Space Mono', monospace; box-shadow: -20px 0 50px rgba(0,0,0,0.5);
-        }
-        #admin-panel.open { right: 0; }
-        .admin-title { font-size: 12px; color: var(--accent-silver); margin-bottom: 30px; border-bottom: 1px solid var(--basalt-edge); padding-bottom: 10px; }
-        .admin-group { margin-bottom: 25px; }
-        .admin-label { font-size: 10px; color: var(--text-secondary); display: block; margin-bottom: 10px; text-transform: uppercase; }
-        .admin-btn {
-            background: transparent; border: 1px solid var(--basalt-edge); color: white;
-            padding: 8px 12px; font-size: 10px; cursor: pointer; width: 100%; text-align: left; margin-bottom: 5px;
-        }
-        .admin-btn.active { border-color: white; color: white; background: rgba(255,255,255,0.05); }
-        input[type="range"] { width: 100%; accent-color: white; }
-
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SyncLift</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@300;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg: #050505;
+      --font-main: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    body {
+      font-family: var(--font-main);
+      background-color: var(--bg);
+      overflow-x: hidden;
+    }
+    .font-mono {
+      font-family: var(--font-mono);
+    }
+    .noise-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 50;
+      opacity: 0.05;
+      mix-blend-mode: overlay;
+    }
+  </style>
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
 </head>
-<body>
-
-    <div class="thunder-layer"></div>
-    <div class="sun-glow"></div>
-    <canvas id="bg-canvas"></canvas>
-
-    <div id="admin-panel">
-        <div class="admin-title">SYSTEM_OVERRIDE_V1</div>
-        <div class="admin-group">
-            <span class="admin-label">Weather Type</span>
-            <button class="admin-btn active" onclick="setManualWeather('clear', this)">CLEAR_SKY</button>
-            <button class="admin-btn" onclick="setManualWeather('rain', this)">PRECIPITATION_RAIN</button>
-            <button class="admin-btn" onclick="setManualWeather('snow', this)">PRECIPITATION_SNOW</button>
-            <button class="admin-btn" onclick="setManualWeather('storm', this)">ELECTRICAL_STORM</button>
-        </div>
-        <div class="admin-group">
-            <span class="admin-label">Particle Speed</span>
-            <input type="range" id="speed-range" min="1" max="50" value="10" oninput="updateParams()">
-        </div>
-        <div class="admin-group">
-            <span class="admin-label">Particle Density</span>
-            <input type="range" id="density-range" min="0" max="500" value="100" oninput="updateParams()">
-        </div>
-    </div>
-
-    <div class="weather-card">
-        <div class="glint-effect"></div>
-        
-        <div class="location-meta">
-            <span id="location-name">LOADING...</span>
-            <span id="timestamp">--:-- GMT</span>
-        </div>
-
-        <div class="main-display">
-            <div class="temperature" id="main-temp">
-                --<span class="unit">°</span>
-            </div>
-            <div class="condition-label" id="weather-desc">STANDBY</div>
-        </div>
-
-        <div class="stats-grid">
-            <div class="stat-item">
-                <span class="stat-label">Wind Velocity</span>
-                <span class="stat-value"><span id="stat-wind">--</span> <small style="font-size: 10px; color: var(--text-secondary);">km/h</small></span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Pressure</span>
-                <span class="stat-value"><span id="stat-pressure">--</span> <small style="font-size: 10px; color: var(--text-secondary);">hPa</small></span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Humidity</span>
-                <span class="stat-value" id="stat-humidity">--%</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Cloud Cover</span>
-                <span class="stat-value" id="stat-clouds">--%</span>
-            </div>
-        </div>
-
-        <div class="forecast-container" id="forecast-list"></div>
-    </div>
-
-    <script>
-        const canvas = document.getElementById('bg-canvas');
-        const ctx = canvas.getContext('2d');
-        let particles = [];
-        let config = { type: 'clear', speed: 1.5, density: 100 };
-
-        function initCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-
-        class Particle {
-            constructor() { this.init(); }
-            init() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.vx = config.type === 'snow' ? (Math.random() - 0.5) * config.speed : 0;
-                this.vy = (Math.random() * config.speed) + (config.type === 'rain' ? 2 : 0.5);
-                this.size = config.type === 'snow' ? Math.random() * 3 + 1 : 1;
-                this.opacity = Math.random() * 0.4;
-            }
-            draw() {
-                ctx.beginPath();
-                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
-                if (config.type === 'snow') {
-                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                } else {
-                    ctx.rect(this.x, this.y, 1, 10);
-                }
-                ctx.fill();
-            }
-            update() {
-                this.y += this.vy;
-                this.x += this.vx;
-                if (this.y > canvas.height) this.y = -10;
-                if (this.x > canvas.width) this.x = 0;
-                if (this.x < 0) this.x = canvas.width;
-            }
-        }
-
-        function syncParticles() {
-            particles = [];
-            let count = (config.type === 'clear') ? 0 : config.density;
-            for (let i = 0; i < count; i++) particles.push(new Particle());
-        }
-
-        function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            particles.forEach(p => { p.update(); p.draw(); });
-            requestAnimationFrame(animate);
-        }
-
-        function setManualWeather(type, btn) {
-            config.type = type;
-            document.querySelectorAll('.admin-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            document.body.className = (type === 'clear') ? 'weather-sun' : 'weather-' + type;
-            syncParticles();
-            document.getElementById('weather-desc').textContent = type.toUpperCase() + "_OVERRIDE";
-        }
-
-        function updateParams() {
-            config.speed = document.getElementById('speed-range').value / 10;
-            config.density = document.getElementById('density-range').value;
-            syncParticles();
-        }
-
-        let secretBuffer = "";
-        window.addEventListener('keydown', (e) => {
-            secretBuffer += e.key;
-            if (secretBuffer.length > 4) secretBuffer = secretBuffer.substring(1);
-            if (secretBuffer === "5723") document.getElementById('admin-panel').classList.toggle('open');
-        });
-
-        async function fetchWeather() {
-            try {
-                const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=47.7&longitude=2.95&current=wind_speed_10m,weather_code,cloud_cover,pressure_msl,relative_humidity_2m,temperature_2m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Europe%2FBerlin");
-                const data = await res.json();
-                
-                document.getElementById('location-name').textContent = "BLÉNEAU / FR";
-                document.getElementById('main-temp').innerHTML = `${Math.round(data.current.temperature_2m)}<span class="unit">°</span>`;
-                document.getElementById('stat-wind').textContent = Math.round(data.current.wind_speed_10m);
-                document.getElementById('stat-pressure').textContent = Math.round(data.current.pressure_msl);
-                document.getElementById('stat-humidity').textContent = `${data.current.relative_humidity_2m}%`;
-                document.getElementById('stat-clouds').textContent = `${data.current.cloud_cover}%`;
-
-                const code = data.current.weather_code;
-                const weatherMap = { 0:"CLEAR", 1:"MAINLY_CLEAR", 3:"OVERCAST", 61:"RAIN", 71:"SNOW", 95:"STORM" };
-                document.getElementById('weather-desc').textContent = weatherMap[code] || "STABLE";
-
-                let type = 'clear';
-                if(code >= 95) type = 'storm';
-                else if(code >= 71) type = 'snow';
-                else if(code >= 51) type = 'rain';
-                config.type = type;
-                document.body.className = type === 'clear' ? 'weather-sun' : 'weather-' + type;
-                syncParticles();
-
-                const list = document.getElementById('forecast-list');
-                list.innerHTML = "";
-                for(let i=1; i<=3; i++) {
-                    const d = new Date(data.daily.time[i]);
-                    list.innerHTML += `<div class="forecast-day">
-                        <span class="forecast-date">${d.toLocaleDateString('en-US',{weekday:'short'})}</span>
-                        <span class="forecast-temp">${Math.round(data.daily.temperature_2m_max[i])}°</span>
-                    </div>`;
-                }
-            } catch(e) { console.log(e); }
-        }
-
-        window.addEventListener('resize', initCanvas);
-        initCanvas();
-        animate();
-        fetchWeather();
-        setInterval(() => {
-            const n = new Date();
-            document.getElementById('timestamp').textContent = n.getHours().toString().padStart(2,'0')+":"+n.getMinutes().toString().padStart(2,'0')+" GMT";
-        }, 1000);
-    </script>
+<body class="text-white min-h-screen">
+  <svg class="noise-canvas">
+    <filter id="grainy">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" />
+      <feColorMatrix type="saturate" values="0" />
+    </filter>
+    <rect width="100%" height="100%" filter="url(#grainy)" />
+  </svg>
+  <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
 </body>
 </html>

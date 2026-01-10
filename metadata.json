@@ -1,0 +1,5 @@
+{
+  "name": "SyncLift - Equipment Verification",
+  "description": "A modern React-based dashboard for checking maintenance status of elevators and escalators, and reporting technical issues with multilingual support.",
+  "requestFramePermissions": []
+}
